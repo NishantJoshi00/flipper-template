@@ -1,6 +1,18 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
+    var arena = std.heap.ArenaAllocator.init(b.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // Get SDK path from $HOME/.ufbt
+    const home = std.posix.getenv("HOME") orelse ".";
+    const sdk_base = b.fmt("{s}/.ufbt/current/sdk_headers/f7_sdk", .{home});
+
+    // UFBT and shell commands
+    const ufbt_cmd = [_][]const u8{ "python3", "-m", "ufbt" };
+    const shell_cmd = [_][]const u8{"bash"};
+
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m4 },
@@ -23,9 +35,6 @@ pub fn build(b: *std.Build) void {
 
     obj.root_module.unwind_tables = .none;
 
-    // Get SDK path from $HOME/.ufbt
-    const home = std.posix.getenv("HOME") orelse ".";
-    const sdk_base = b.fmt("{s}/.ufbt/current/sdk_headers/f7_sdk", .{home});
 
     // Add ARM toolchain libc headers for @cImport
     const arm_libc_include = b.fmt("{s}/.ufbt/toolchain/arm64-darwin/arm-none-eabi/include", .{home});
@@ -36,24 +45,37 @@ pub fn build(b: *std.Build) void {
     addFlipperDefines(obj);
 
     // Install the .o file
-    const obj_install = b.addInstallBinFile(obj.getEmittedBin(), "app.o");
+    const obj_install = b.addInstallBinFile(obj.getEmittedBin(), b.fmt("{s}.o", .{obj.name}));
     b.getInstallStep().dependOn(&obj_install.step);
 
     const fap_step = b.step("fap", "Package the app into a .fap file");
 
-    const run_ufbt = b.addSystemCommand(&[_][]const u8{ "python3", "-m", "ufbt" });
+    const run_ufbt = b.addSystemCommand(try cmdBuilder(allocator, &ufbt_cmd, &[_][]const u8{}));
     run_ufbt.step.dependOn(&obj_install.step);
     fap_step.dependOn(&run_ufbt.step);
 
     // Create an "init" step that runs the setup script
     const init_step = b.step("init", "Initialize project with custom settings");
-    const run_setup = b.addSystemCommand(&[_][]const u8{ "bash", "setup.sh" });
+    const run_setup = b.addSystemCommand(try cmdBuilder(allocator, &shell_cmd, &[_][]const u8{"setup.sh"}));
     init_step.dependOn(&run_setup.step);
 
     const launch_step = b.step("launch", "Launch the app on Flipper via UFBT");
-    const run_launch = b.addSystemCommand(&[_][]const u8{ "python3", "-m", "ufbt", "launch" });
+    const run_launch = b.addSystemCommand(try cmdBuilder(allocator, &shell_cmd, &[_][]const u8{"launch"}));
     run_launch.step.dependOn(&obj_install.step);
     launch_step.dependOn(&run_launch.step);
+}
+
+fn cmdBuilder(alloc: std.mem.Allocator, cmd: []const []const u8, parts: []const []const u8) ![]const []const u8 {
+    var result = std.ArrayList([]const u8){};
+
+    for (cmd) |part| {
+        try result.append(alloc, part);
+    }
+    for (parts) |part| {
+        try result.append(alloc, part);
+    }
+
+    return result.toOwnedSlice(alloc);
 }
 
 fn addFlipperIncludes(obj: *std.Build.Step.Compile, sdk_base: []const u8) void {
@@ -118,42 +140,3 @@ fn addFlipperDefines(obj: *std.Build.Step.Compile) void {
     obj.root_module.addCMacro("NDEBUG", "");
     obj.root_module.addCMacro("FAP_VERSION", "\\\"1.0\\\"");
 }
-// reference
-//
-//     const target = b.standardTargetOptions(.{});
-
-//     const optimize = b.standardOptimizeOption(.{});
-
-//     const mod = b.addModule("flipper_template", .{
-//         .root_source_file = b.path("src/root.zig"),
-
-//         .target = target,
-//     });
-
-//     const exe = b.addExecutable(.{
-//         .name = "flipper_template",
-//         .root_module = b.createModule(.{
-//             .root_source_file = b.path("src/main.zig"),
-
-//             .target = target,
-//             .optimize = optimize,
-
-//             .imports = &.{
-//                 .{ .name = "flipper_template", .module = mod },
-//             },
-//         }),
-//     });
-
-//     b.installArtifact(exe);
-
-//     const run_step = b.step("run", "Run the app");
-
-//     const run_cmd = b.addRunArtifact(exe);
-//     run_step.dependOn(&run_cmd.step);
-
-//     run_cmd.step.dependOn(b.getInstallStep());
-
-//     if (b.args) |args| {
-//         run_cmd.addArgs(args);
-//     }
-// }
