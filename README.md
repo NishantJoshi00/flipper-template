@@ -1,6 +1,6 @@
 # Flipper Zero Zig Template
 
-A modern, production-ready template for developing Flipper Zero applications using the Zig programming language. This project provides a streamlined build system that integrates Zig with the Flipper Zero SDK, enabling developers to write type-safe, memory-safe applications for the Flipper Zero platform.
+A modern, production-ready template for developing [Flipper Zero](https://flipper.net/) applications using the Zig programming language. This project provides a streamlined build system that integrates Zig with the Flipper Zero SDK, enabling developers to write type-safe, memory-safe applications for the Flipper Zero platform.
 
 ## Overview
 
@@ -33,7 +33,7 @@ The template uses a two-stage build process:
 ### Required Tools
 
 - **Zig**: Version 0.15.1 or later ([download](https://ziglang.org/download/))
-- **UFBT**: Unofficial Flipper Build Tool ([installation guide](https://github.com/flipperdevices/flipperzero-ufbt))
+- **UFBT**: Unofficial Flipper Build Tool ([installation guide](https://github.com/flipperdevices/flipperzero-ufbt#installation))
 - **Python 3**: Required for running `ufbt` commands
 - **Flipper Zero SDK**: Automatically managed by `ufbt` (installed to `~/.ufbt`)
 
