@@ -35,17 +35,22 @@ The template uses a two-stage build process:
 - **Zig**: Version 0.15.1 or later ([download](https://ziglang.org/download/))
 - **UFBT**: Unofficial Flipper Build Tool ([installation guide](https://github.com/flipperdevices/flipperzero-ufbt#installation))
 - **Python 3**: Required for running `ufbt` commands
-- **Flipper Zero SDK**: Automatically managed by `ufbt` (installed to `~/.ufbt`)
+- **Flipper Zero SDK**: Automatically managed by `ufbt` (installed to `~/.ufbt` or `UFBT_HOME`)
+
+### Development Container
+
+A [Development Container](https://containers.dev/) is provided under `.devcontainer/` with Zig 0.15.1 and the [uFBT](https://github.com/flipperdevices/flipperzero-ufbt) SDK preinstalled. Open the repo in VS Code or Cursor and choose **Reopen in Container**, or validate locally:
+
+```bash
+devcontainer build --workspace-folder .
+devcontainer up --workspace-folder .
+```
+
+The SDK and ARM toolchain are stored in a Docker volume at `.ufbt/` inside the workspace (`UFBT_HOME`). The first container start downloads firmware SDK and toolchain artifacts (several hundred MB).
 
 ### Platform-Specific Setup
 
-#### macOS
-The template is pre-configured for ARM64 macOS with the ARM toolchain path:
-```
-~/.ufbt/toolchain/arm64-darwin/arm-none-eabi/include
-```
-
-If you're on a different platform, you may need to adjust the `arm_libc_include` path in `build.zig:31` to match your toolchain location.
+`build.zig` selects the uFBT toolchain directory from the host OS and CPU (`x86_64-linux`, `aarch64-linux`, `arm64-darwin`, etc.). Override with `UFBT_TOOLCHAIN_TRIPLE` if needed.
 
 ## Installation
 

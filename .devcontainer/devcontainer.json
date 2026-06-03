@@ -1,0 +1,37 @@
+{
+  "name": "Flipper Zig (uFBT)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "UFBT_HOME": "${containerWorkspaceFolder}/.ufbt",
+    "PATH": "${containerEnv:HOME}/.local/bin:${containerEnv:PATH}"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ziglang.vscode-zig",
+        "ms-python.python"
+      ],
+      "settings": {
+        "zig.path": "/usr/local/bin/zig",
+        "zig.initialSetupDone": true
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postAttachCommand": "ufbt status 2>/dev/null || true",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "username": "vscode",
+      "upgradePackages": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "mounts": [
+    "source=flipper-zig-ufbt-sdk,target=${containerWorkspaceFolder}/.ufbt,type=volume"
+  ]
+}

@@ -5,9 +5,10 @@ pub fn build(b: *std.Build) !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    // Get SDK path from $HOME/.ufbt
+    // SDK path: UFBT_HOME if set, otherwise ~/.ufbt (see flipperzero-ufbt README)
     const home = std.posix.getenv("HOME") orelse ".";
-    const sdk_base = b.fmt("{s}/.ufbt/current/sdk_headers/f7_sdk", .{home});
+    const ufbt_home = std.posix.getenv("UFBT_HOME") orelse b.fmt("{s}/.ufbt", .{home});
+    const sdk_base = b.fmt("{s}/current/sdk_headers/f7_sdk", .{ufbt_home});
 
     // UFBT and shell commands
     const ufbt_cmd = [_][]const u8{ "python3", "-m", "ufbt" };
@@ -36,8 +37,9 @@ pub fn build(b: *std.Build) !void {
     obj.root_module.unwind_tables = .none;
 
 
-    // Add ARM toolchain libc headers for @cImport
-    const arm_libc_include = b.fmt("{s}/.ufbt/toolchain/arm64-darwin/arm-none-eabi/include", .{home});
+    // Add ARM toolchain libc headers for @cImport (path matches uFBT host toolchain)
+    const toolchain_triple = ufbtToolchainTriple(b);
+    const arm_libc_include = b.fmt("{s}/toolchain/{s}/arm-none-eabi/include", .{ ufbt_home, toolchain_triple });
     obj.addSystemIncludePath(.{ .cwd_relative = arm_libc_include });
 
     // Add Flipper SDK includes and defines
@@ -63,6 +65,29 @@ pub fn build(b: *std.Build) !void {
     const run_launch = b.addSystemCommand(try cmdBuilder(allocator, &shell_cmd, &[_][]const u8{"launch"}));
     run_launch.step.dependOn(&obj_install.step);
     launch_step.dependOn(&run_launch.step);
+}
+
+fn ufbtToolchainTriple(b: *std.Build) []const u8 {
+    _ = b;
+    const builtin = @import("builtin");
+    if (std.posix.getenv("UFBT_TOOLCHAIN_TRIPLE")) |triple| return triple;
+    return switch (builtin.os.tag) {
+        .linux => switch (builtin.cpu.arch) {
+            .x86_64 => "x86_64-linux",
+            .aarch64 => "aarch64-linux",
+            else => @compileError("unsupported Linux CPU for uFBT toolchain"),
+        },
+        .macos => switch (builtin.cpu.arch) {
+            .aarch64 => "arm64-darwin",
+            .x86_64 => "x86_64-darwin",
+            else => @compileError("unsupported macOS CPU for uFBT toolchain"),
+        },
+        .windows => switch (builtin.cpu.arch) {
+            .x86_64 => "x86_64-windows",
+            else => @compileError("unsupported Windows CPU for uFBT toolchain"),
+        },
+        else => @compileError("unsupported host OS for uFBT toolchain"),
+    };
 }
 
 fn cmdBuilder(alloc: std.mem.Allocator, cmd: []const []const u8, parts: []const []const u8) ![]const []const u8 {
