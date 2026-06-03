@@ -2,3 +2,5 @@ zig-out/
 .zig-cache/
 .vscode/
 dist/
+.ufbt/
+.devcontainer/devcontainer-lock.json
